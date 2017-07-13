@@ -25,32 +25,23 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	// Add random Gaussian noise to each particle.
 	// NOTE: Consult particle_filter.h for more information about this method (and others in this file).
 
-	num_particles = 1000;
+	num_particles = 10;
 
 	default_random_engine gen;
 
 	// Create distributions centered about incoming initial 'gps' coordinates
 	normal_distribution<double> N_x(x, std[0]);
 	normal_distribution<double> N_y(y, std[1]);
-	normal_distribution<double> N_theta(theta, std[2]);
+	normal_distribution<double> N_t(theta, std[2]);
 
 	for (int i = 0; i < num_particles; i++)
 	{
 		Particle p;
 		p.id = i;
 
-		if (isDebug)
-		{
-			p.x = x;
-			p.y = y;
-			p.theta = theta;
-		}
-		else
-		{
-			p.x = N_x(gen);
-			p.y = N_y(gen);
-			p.theta = N_theta(gen);
-		}
+		p.x = N_x(gen);
+		p.y = N_y(gen);
+		p.theta = N_t(gen);
 
 		particles.push_back(p);
 	}
@@ -66,49 +57,41 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	//  http://www.cplusplus.com/reference/random/default_random_engine/
 
 	// Pre-compute commonly used variables.
-	double vt = velocity * delta_t;
-	double vy = velocity / yaw_rate;
-	double ydt = yaw_rate * delta_t;
+	double vt = velocity*delta_t;
+	double vy = velocity/yaw_rate;
+	double ydt = yaw_rate*delta_t;
 
-	for (int i = 0; i < num_particles; i++)
+	default_random_engine gen;
+	normal_distribution<double> N_x(0, std_pos[0]);
+	normal_distribution<double> N_y(0, std_pos[1]);
+	normal_distribution<double> N_t(0, std_pos[2]);
+
+	for (int i = 0; i<num_particles; i++)
 	{
 		double new_x, new_y, new_theta;
-		Particle &p = particles[i];
+		Particle& p = particles[i];
 
-		if (yaw_rate == 0)
-		{
-			new_x = p.x + vt * cos(p.theta);
-			new_y = p.y + vt * sin(p.theta);
+		if (yaw_rate==0)
+			{
+			new_x = p.x+vt*cos(p.theta);
+			new_y = p.y+vt*sin(p.theta);
 			new_theta = p.theta;
-		}
+			}
 		else
-		{
-			new_x = p.x + vy * ( sin(p.theta + ydt) - sin(p.theta) );
-			new_y = p.y + vy * (cos(p.theta) - cos(p.theta + ydt));
-			new_theta = p.theta + ydt;
-		}
+			{
+			new_x = p.x+vy*(sin(p.theta+ydt)-sin(p.theta));
+			new_y = p.y+vy*(cos(p.theta)-cos(p.theta+ydt));
+			new_theta = p.theta+ydt;
+			}
 
+		auto noise_x = N_x(gen);
+		auto noise_y = N_y(gen);
+		auto noise_t = N_t(gen);
 
-		if (isDebug){
-			p.x = new_x;
-			p.y = new_y;
-			p.theta = new_theta;
-		}
-		else
-		{
-			// Generate new distributions centered around the new values.
-			normal_distribution<double> N_x(new_x, std_pos[0]);
-			normal_distribution<double> N_y(new_y, std_pos[1]);
-			normal_distribution<double> N_theta(new_theta, std_pos[2]);
-			default_random_engine gen;
-
-			p.x = N_x(gen);
-			p.y = N_y(gen);
-			p.theta = N_theta(gen);
-		}
-
+		p.x = new_x+noise_x;
+		p.y = new_y+noise_y;
+		p.theta = new_theta+noise_t;
 	}
-
 }
 
 
@@ -133,9 +116,6 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   and the following is a good resource for the actual equation to implement (look at equation 
 	//   3.33
 	//   http://planning.cs.uiuc.edu/node99.html
-
-	if (isDebug)
-		return;
 
 	for (int j = 0; j < num_particles; j++)
 	{
@@ -220,9 +200,6 @@ void ParticleFilter::resample() {
 	// Resample particles with replacement with probability proportional to their weight.
 	// NOTE: You may find std::discrete_distribution helpful here.
 	//   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
-
-	if (isDebug)
-		return;
 
 	default_random_engine gen;
 	discrete_distribution<int> distribution(weights.begin(), weights.end());

@@ -27,13 +27,9 @@ struct Particle {
 
 class ParticleFilter {
 
-  	bool isDebug = false;
-	
 	// Number of particles to draw
-	int num_particles; 
-	
-	
-	
+	int num_particles;
+
 	// Flag, if filter is initialized
 	bool is_initialized;
 	
